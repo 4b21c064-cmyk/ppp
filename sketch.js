@@ -11,7 +11,6 @@ let gameState = 'START';
 let currentLevel = 0;
 let currentSlotIndex = 0; 
 
-// 顏色與關卡定義
 const COLORS = {
   '紅': '#FF4D4D',
   '黃': '#FFD700',
@@ -29,21 +28,17 @@ let targetSlots = [];
 let detectCooldown = 0; 
 
 function preload() {
-  // 載入 AI 模型
   classifier = ml5.imageClassifier(modelURL + 'model.json');
 }
 
 function setup() {
-  // 💻 手機優化：自動偵測手機螢幕寬高，改成直式畫布
-  let canvasW = windowWidth < 500 ? windowWidth : 400;
-  let canvasH = windowHeight < 700 ? windowHeight : 680;
-  createCanvas(canvasW, canvasH);
+  // 📱 核心優化：直接讓畫布等於手機螢幕的完整寬高
+  createCanvas(windowWidth, windowHeight);
   
   rectMode(CENTER);
   textAlign(CENTER, CENTER);
   
-  // 💻 手機優化：指定使用環境鏡頭 (後置鏡頭 'environment')
-  // 如果想用前置鏡頭，可以改成 'user'
+  // 設定後置鏡頭
   let constraints = {
     video: {
       facingMode: 'environment' 
@@ -71,7 +66,6 @@ function draw() {
   }
 }
 
-// 初始化關卡位置（改為符合手機寬度的間距）
 function initLevel() {
   targetSlots = [];
   currentSlotIndex = 0;
@@ -80,14 +74,14 @@ function initLevel() {
   let levelData = levels[currentLevel];
   let numSlots = levelData.target.length;
   
-  // 💻 手機優化：縮小格子尺寸與間距，確保在窄螢幕不會超出邊界
-  let slotSize = width / (numSlots + 1.5); 
-  let startX = width / 2 - ((numSlots - 1) * (slotSize + 10)) / 2;
+  // 📱 響應式佈局：依據當前手機寬度動態計算格子大小
+  let slotSize = width / (numSlots + 1.8); 
+  let startX = width / 2 - ((numSlots - 1) * (slotSize + 12)) / 2;
   
   for (let i = 0; i < numSlots; i++) {
     targetSlots.push({
-      x: startX + i * (slotSize + 10),
-      y: height * 0.25, // 放在螢幕上方 1/4 處
+      x: startX + i * (slotSize + 12),
+      y: height * 0.22, // 格子放在螢幕上方 22% 的位置
       size: slotSize,
       targetColor: levelData.target[i],
       placedColor: null
@@ -95,34 +89,34 @@ function initLevel() {
   }
 }
 
-// --- 畫面繪製邏輯（手機排版） ---
+// --- 畫面繪製邏輯 ---
 
 function drawStartScreen() {
   fill('#333');
-  textSize(24); // 💻 適合手機的字體大小
+  textSize(width * 0.07); // 📱 字體大小隨螢幕寬度縮放
   text("🤖 AI 兒童積木挑戰 🧩", width / 2, height * 0.3);
   
-  textSize(16);
-  text("請準備好【紅黃綠藍】積木\n將後置鏡頭對準積木來闖關！", width / 2, height * 0.4);
+  textSize(width * 0.045);
+  text("請準備好【紅黃綠藍】積木\n將後置鏡頭對準積木來闖關！", width / 2, height * 0.42);
   
   // 開始按鈕
   fill('#4CAF50');
-  rect(width / 2, height * 0.6, 160, 50, 15);
+  rect(width / 2, height * 0.65, width * 0.45, 55, 15);
   fill(255);
-  textSize(20);
-  text("開始挑戰", width / 2, height * 0.6);
+  textSize(width * 0.05);
+  text("開始挑戰", width / 2, height * 0.65);
 }
 
 function drawGameScreen() {
   // 1. 關卡標題
   fill('#333');
   noStroke();
-  textSize(22);
-  text(`第 ${currentLevel + 1} 關`, width / 2, height * 0.08);
+  textSize(width * 0.06);
+  text(`第 ${currentLevel + 1} 關`, width / 2, height * 0.07);
   
-  textSize(15);
+  textSize(width * 0.04);
   let hintText = "目標： " + levels[currentLevel].target.join(' ➔ ');
-  text(hintText, width / 2, height * 0.14);
+  text(hintText, width / 2, height * 0.12);
   
   // 2. 繪製關卡格子
   for (let i = 0; i < targetSlots.length; i++) {
@@ -144,70 +138,63 @@ function drawGameScreen() {
     if (!slot.placedColor) {
       noStroke();
       fill(100);
-      textSize(16);
+      textSize(slot.size * 0.25);
       text(slot.targetColor, slot.x, slot.y);
     }
   }
   
-  // 3. 手機畫面中下段：鏡頭畫面與 AI 狀態
-  let camW = width * 0.75; // 根據手機寬度縮放鏡頭
+  // 3. 鏡頭畫面（高度與寬度比例完美控制，不擋到文字）
+  let camW = width * 0.8; 
   let camH = camW * 0.75;
   let camX = width / 2;
-  let camY = height * 0.55; // 放在螢幕中下段
+  let camY = height * 0.54; 
   
-  // 鏡頭外框
   stroke('#2196F3');
   strokeWeight(4);
   fill(0);
   rect(camX, camY, camW + 8, camH + 8, 10);
   
-  // 💻 手機優化：因為是後置主鏡頭拍桌上，不需要做鏡像翻轉（直接畫出即可）
   image(video, camX - camW/2, camY - camH/2, camW, camH);
   
-  // 4. AI 辨識文字狀態
+  // 4. AI 辨識文字狀態與冷卻提示
   noStroke();
   fill('#333');
-  textSize(16);
+  textSize(width * 0.045);
   
-  // 顯示下方即時結果
   if (COLORS[aiLabel]) {
     text(`🤖 偵測到：${aiLabel}色 (${floor(aiConfidence * 100)}%)`, width / 2, height * 0.82);
-    
-    // 畫一個小色條提示
     fill(COLORS[aiLabel]);
     rect(width / 2, height * 0.86, 60, 15, 5);
   } else {
     fill('#999');
-    text(" buscando... 尋找積木中...", width / 2, height * 0.82);
+    text("🔍 尋找積木中...", width / 2, height * 0.82);
   }
   
-  // 處理冷卻提示
   if (detectCooldown > 0) {
     detectCooldown--;
     fill('#E91E63');
-    textSize(16);
-    text("⏱️ 比對成功！請換下一塊...", width / 2, height * 0.92);
+    textSize(width * 0.04);
+    text("⏱️ 比對成功！請換下一塊...", width / 2, height * 0.91);
   }
 }
 
 function drawWinScreen() {
   fill('#FF9800');
   noStroke();
-  textSize(28);
+  textSize(width * 0.07);
   text("🎉 恭喜全數通關！ 🎉", width / 2, height * 0.35);
   
   fill('#333');
-  textSize(16);
+  textSize(width * 0.045);
   text("你太棒了！用手機也能玩 AI 喔！", width / 2, height * 0.45);
   
   fill('#2196F3');
-  rect(width / 2, height * 0.6, 160, 50, 15);
+  rect(width / 2, height * 0.65, width * 0.45, 55, 15);
   fill(255);
-  textSize(20);
-  text("再玩一次", width / 2, height * 0.6);
+  textSize(width * 0.05);
+  text("再玩一次", width / 2, height * 0.65);
 }
 
-// --- AI 控制核心 ---
 function handleAIIntelligence() {
   if (classifier && detectCooldown === 0) {
     classifier.classify(video, gotResult);
@@ -226,7 +213,7 @@ function gotResult(error, results) {
     if (aiLabel === currentSlot.targetColor) {
       currentSlot.placedColor = aiLabel;
       currentSlotIndex++; 
-      detectCooldown = 90; // 💻 手機版延長冷卻時間至 1.5 秒，方便小朋友拿開積木
+      detectCooldown = 90; 
       
       if (currentSlotIndex >= targetSlots.length) {
         checkLevelWin();
@@ -248,14 +235,13 @@ function checkLevelWin() {
   }, 1000);
 }
 
-// 基礎點擊（適應手機點擊觸發）
 function mousePressed() {
   if (gameState === 'START') {
-    if (mouseX > width/2 - 80 && mouseX < width/2 + 80 && mouseY > height*0.6 - 25 && mouseY < height*0.6 + 25) {
+    if (mouseX > width/2 - (width*0.22) && mouseX < width/2 + (width*0.22) && mouseY > height*0.65 - 27 && mouseY < height*0.65 + 27) {
       gameState = 'PLAY';
     }
   } else if (gameState === 'WIN') {
-    if (mouseX > width/2 - 80 && mouseX < width/2 + 80 && mouseY > height*0.6 - 25 && mouseY < height*0.6 + 25) {
+    if (mouseX > width/2 - (width*0.22) && mouseX < width/2 + (width*0.22) && mouseY > height*0.65 - 27 && mouseY < height*0.65 + 27) {
       currentLevel = 0;
       initLevel();
       gameState = 'PLAY';
@@ -263,10 +249,8 @@ function mousePressed() {
   }
 }
 
-// 💻 手機優化：當手機旋轉或視窗大小改變時，自動重新計算
+// 📱 當手機轉向或螢幕尺寸改變，自動重新填滿
 function windowResized() {
-  let canvasW = windowWidth < 500 ? windowWidth : 400;
-  let canvasH = windowHeight < 700 ? windowHeight : 680;
-  resizeCanvas(canvasW, canvasH);
+  resizeCanvas(windowWidth, windowHeight);
   initLevel();
 }

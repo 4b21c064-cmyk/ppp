@@ -1,7 +1,12 @@
 html, body {
   margin: 0;
   padding: 0;
+  overflow: hidden; /* 防止手機出現網頁捲軸 */
+  background-color: #F0F8FF;
+  /* 防止小朋友在手機上雙擊放大畫面，干擾遊戲 */
+  touch-action: none; 
 }
+
 canvas {
-  display: block;
+  display: block; /* 移除畫布下方的微小空隙 */
 }
